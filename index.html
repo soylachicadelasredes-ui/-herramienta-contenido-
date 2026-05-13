@@ -20,10 +20,14 @@
     header {
       background: #1a1a1a;
       color: #fff;
-      padding: 20px 24px;
+      padding: 16px 24px 0;
+    }
+
+    .header-top {
       display: flex;
       align-items: center;
       gap: 12px;
+      padding-bottom: 16px;
     }
 
     header .logo {
@@ -35,6 +39,7 @@
       align-items: center;
       justify-content: center;
       font-size: 18px;
+      flex-shrink: 0;
     }
 
     header h1 {
@@ -46,6 +51,34 @@
       font-size: 13px;
       color: #888;
       margin-top: 2px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab {
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #888;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: inherit;
+    }
+
+    .tab:hover { color: #ccc; }
+
+    .tab.active {
+      color: #e8ff5a;
+      border-bottom-color: #e8ff5a;
     }
 
     .chat-wrapper {
@@ -142,8 +175,18 @@
       font-size: 12px;
     }
 
-    .bubble {
+    .bubble-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       max-width: calc(100% - 60px);
+    }
+
+    .message.user .bubble-wrap {
+      align-items: flex-end;
+    }
+
+    .bubble {
       padding: 14px 18px;
       border-radius: 16px;
       font-size: 15px;
@@ -162,8 +205,28 @@
       border-top-left-radius: 4px;
     }
 
-    .message.assistant .bubble h3 {
+    .message.assistant .bubble h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e8ff5a;
+      color: #1a1a1a;
+    }
+
+    .message.assistant .bubble h2 {
       font-size: 16px;
+      font-weight: 700;
+      margin: 20px 0 8px;
+      color: #1a1a1a;
+    }
+
+    .message.assistant .bubble h2:first-child {
+      margin-top: 0;
+    }
+
+    .message.assistant .bubble h3 {
+      font-size: 15px;
       font-weight: 700;
       margin: 20px 0 8px;
       color: #1a1a1a;
@@ -228,6 +291,35 @@
       padding: 8px 10px;
       border: 1px solid #e8e8e8;
       vertical-align: top;
+    }
+
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #f5f4f0;
+      border: 1px solid #e0e0e0;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+      align-self: flex-start;
+    }
+
+    .copy-btn:hover {
+      background: #e8ff5a;
+      border-color: #e8ff5a;
+      color: #1a1a1a;
+    }
+
+    .copy-btn.copied {
+      background: #1a1a1a;
+      border-color: #1a1a1a;
+      color: #e8ff5a;
     }
 
     .typing {
@@ -333,16 +425,23 @@
       header h1 { font-size: 16px; }
       .welcome h2 { font-size: 19px; }
       .bubble { font-size: 14px; }
+      .tab { padding: 9px 12px; font-size: 12px; }
     }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">✦</div>
-  <div>
-    <h1>Estratega de Contenido</h1>
-    <p>Tu plan de redes en minutos</p>
+  <div class="header-top">
+    <div class="logo">✦</div>
+    <div>
+      <h1>Estratega de Contenido</h1>
+      <p>Tu plan de redes en minutos</p>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="tab-content" onclick="switchMode('content')">Plan de Contenido</button>
+    <button class="tab" id="tab-briefing" onclick="switchMode('briefing')">Briefing de Cliente</button>
   </div>
 </header>
 
@@ -387,8 +486,61 @@
   const messagesEl = document.getElementById("messages");
   const inputEl = document.getElementById("input");
   const sendBtn = document.getElementById("sendBtn");
+
   let history = [];
   let isLoading = false;
+  let currentMode = "content";
+
+  const MODES = {
+    content: {
+      placeholder: "Escribí tu rubro o pregunta...",
+      welcome: {
+        title: "Hola, ¿con qué negocio arrancamos? 👋",
+        desc: "Contame tu rubro o tipo de negocio y te armo un plan de contenido completo, simple y listo para usar.",
+        chips: ["Pastelería", "Consultorio odontológico", "Ropa y accesorios", "Coach o consultor", "Gimnasio o entrenador personal", "Restaurante o bar", "Fotógrafo", "Catering y eventos"]
+      }
+    },
+    briefing: {
+      placeholder: "Contame sobre el cliente nuevo...",
+      welcome: {
+        title: "Briefing de cliente nuevo 📋",
+        desc: "Contame sobre tu cliente y te ayudo a completar el briefing paso a paso. Al final generamos el documento listo para guardar o enviar.",
+        chips: ["Cliente de ropa y moda", "Restaurante o gastronomía", "Profesional de la salud", "Marca de servicios B2B", "Emprendimiento de belleza", "Coach o terapeuta", "Comercio local", "Marca personal"]
+      }
+    }
+  };
+
+  function switchMode(mode) {
+    if (mode === currentMode) return;
+    currentMode = mode;
+
+    document.getElementById("tab-content").classList.toggle("active", mode === "content");
+    document.getElementById("tab-briefing").classList.toggle("active", mode === "briefing");
+
+    history = [];
+    isLoading = false;
+    sendBtn.disabled = false;
+
+    const cfg = MODES[mode];
+    inputEl.placeholder = cfg.placeholder;
+
+    messagesEl.innerHTML = "";
+    renderWelcome(cfg.welcome);
+  }
+
+  function renderWelcome(cfg) {
+    const el = document.createElement("div");
+    el.className = "welcome";
+    el.id = "welcome";
+    el.innerHTML = `
+      <h2>${cfg.title}</h2>
+      <p>${cfg.desc}</p>
+      <div class="chips">
+        ${cfg.chips.map(c => `<div class="chip" onclick="sendChip(this)">${c}</div>`).join("")}
+      </div>
+    `;
+    messagesEl.appendChild(el);
+  }
 
   function autoResize(el) {
     el.style.height = "auto";
@@ -407,6 +559,27 @@
     sendMessage();
   }
 
+  function isBriefingDocument(text) {
+    return text.includes("# BRIEFING") || text.includes("# Briefing");
+  }
+
+  function makeCopyBtn(content) {
+    const btn = document.createElement("button");
+    btn.className = "copy-btn";
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar briefing`;
+    btn.onclick = () => {
+      navigator.clipboard.writeText(content).then(() => {
+        btn.textContent = "Copiado";
+        btn.classList.add("copied");
+        setTimeout(() => {
+          btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar briefing`;
+          btn.classList.remove("copied");
+        }, 2000);
+      });
+    };
+    return btn;
+  }
+
   function addMessage(role, content) {
     const welcome = document.getElementById("welcome");
     if (welcome) welcome.remove();
@@ -418,6 +591,9 @@
     avatar.className = "avatar";
     avatar.textContent = role === "user" ? "Vos" : "IA";
 
+    const bubbleWrap = document.createElement("div");
+    bubbleWrap.className = "bubble-wrap";
+
     const bubble = document.createElement("div");
     bubble.className = "bubble";
 
@@ -427,8 +603,14 @@
       bubble.textContent = content;
     }
 
+    bubbleWrap.appendChild(bubble);
+
+    if (role === "assistant" && currentMode === "briefing" && isBriefingDocument(content)) {
+      bubbleWrap.appendChild(makeCopyBtn(content));
+    }
+
     msg.appendChild(avatar);
-    msg.appendChild(bubble);
+    msg.appendChild(bubbleWrap);
     messagesEl.appendChild(msg);
     msg.scrollIntoView({ behavior: "smooth", block: "end" });
     return msg;
@@ -477,7 +659,7 @@
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, mode: currentMode }),
       });
 
       const data = await res.json();
